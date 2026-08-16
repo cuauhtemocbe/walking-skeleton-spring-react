@@ -1,0 +1,5 @@
+CREATE TABLE nota (
+    id UUID PRIMARY KEY,
+    texto VARCHAR(500) NOT NULL,
+    creada_en TIMESTAMPTZ NOT NULL
+);
