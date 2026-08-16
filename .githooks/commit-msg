@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Valida Conventional Commits con un regex de shell en vez de commitlint: este repo ya
+# tiene dos manifiestos (api/build.gradle.kts, web/package.json) y no vale la pena un
+# tercero solo para esto. Si el repo crece y esto se queda corto, la ruta de upgrade es
+# instalar commitlint + husky en la raíz y reemplazar este script por ese hook.
+set -euo pipefail
+
+commit_msg_file="$1"
+subject=$(grep -v '^#' "$commit_msg_file" | head -n1)
+
+pattern='^(feat|fix|docs|chore|test|refactor|build|ci)(\(.+\))?!?: .{1,72}$'
+
+case "$subject" in
+	"Merge branch"*|"Merge pull request"*|"Revert \""*|"fixup! "*|"squash! "*)
+		exit 0
+		;;
+esac
+
+if ! [[ "$subject" =~ $pattern ]]; then
+	echo "❌ El mensaje de commit no sigue Conventional Commits." >&2
+	echo "" >&2
+	echo "Formato esperado:" >&2
+	echo "  <tipo>(<alcance opcional>)!?: <descripción de 1 a 72 caracteres>" >&2
+	echo "" >&2
+	echo "Tipos válidos: feat fix docs chore test refactor build ci" >&2
+	echo "" >&2
+	echo "Ejemplo: feat(api): agregar endpoint de health" >&2
+	exit 1
+fi
+
+exit 0
