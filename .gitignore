@@ -1,0 +1,28 @@
+# Java / Gradle
+api/build/
+api/.gradle/
+api/bin/
+*.class
+
+# Node
+web/node_modules/
+web/dist/
+web/coverage/
+web/test-results/
+web/playwright-report/
+.pnpm-store/
+
+# Entorno y config local-only
+.env
+.mcp.json
+opencode.json
+.claude/
+.codegraph/
+
+# Editores
+.idea/
+.vscode/
+*.iml
+
+# SO
+.DS_Store
