@@ -68,4 +68,5 @@ Si este repo alguna vez se gradúa a producto, el estándar completo está en
 ## Uso
 
 Pendiente: se documenta la secuencia exacta de verificación desde un clon limpio al cerrar
-M5. Hasta entonces, `make help` lista los targets disponibles.
+M5. Hasta entonces, `make help` lista los targets disponibles. Corré `make install-hooks`
+una vez por clon para activar los git hooks versionados en `.githooks/`.

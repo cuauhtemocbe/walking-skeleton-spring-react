@@ -18,6 +18,7 @@ web/playwright-report/
 opencode.json
 .claude/
 .codegraph/
+CLAUDE.md
 
 # Editores
 .idea/
