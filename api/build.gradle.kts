@@ -1,5 +1,6 @@
 plugins {
 	java
+	jacoco
 	id("org.springframework.boot") version "4.1.0"
 	id("io.spring.dependency-management") version "1.1.7"
 }
@@ -30,6 +31,7 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+	testImplementation("org.springframework.boot:spring-boot-restclient")
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
 	testImplementation("org.testcontainers:testcontainers-junit-jupiter")
 	testImplementation("org.testcontainers:testcontainers-postgresql")
@@ -38,4 +40,49 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	finalizedBy(tasks.jacocoTestReport)
+}
+
+jacoco {
+	toolVersion = "0.8.15"
+}
+
+// Clases sin lógica de negocio que no deben inflar ni castigar el número de cobertura:
+// el punto de entrada de Spring Boot y la configuración declarativa sin ramas que probar.
+// El manejador global de errores vive en el mismo paquete pero SÍ tiene lógica (arma el
+// ProblemDetail), así que se lo excluye de la exclusión.
+val jacocoRutasExcluidas = listOf("com/miapp/ApiApplication.class", "com/miapp/config/**")
+
+fun ConfigurableFileCollection.excluirClasesSinLogica() {
+	setFrom(files.map { dir ->
+		fileTree(dir) { exclude(jacocoRutasExcluidas) } +
+			fileTree(dir) { include("com/miapp/config/ManejadorErrores.class") }
+	})
+}
+
+tasks.jacocoTestReport {
+	dependsOn(tasks.test)
+	classDirectories.excluirClasesSinLogica()
+	reports {
+		xml.required = true
+		html.required = true
+	}
+}
+
+tasks.jacocoTestCoverageVerification {
+	dependsOn(tasks.test)
+	classDirectories.excluirClasesSinLogica()
+	violationRules {
+		rule {
+			limit {
+				counter = "LINE"
+				value = "COVEREDRATIO"
+				minimum = "0.90".toBigDecimal()
+			}
+		}
+	}
+}
+
+tasks.check {
+	dependsOn(tasks.jacocoTestCoverageVerification)
 }
