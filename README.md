@@ -70,3 +70,10 @@ Si este repo alguna vez se gradúa a producto, el estándar completo está en
 Pendiente: se documenta la secuencia exacta de verificación desde un clon limpio al cerrar
 M5. Hasta entonces, `make help` lista los targets disponibles. Corré `make install-hooks`
 una vez por clon para activar los git hooks versionados en `.githooks/`.
+
+### Generar los tipos del cliente
+
+`make gen-api` (o `pnpm gen:api` desde `web/`) regenera `web/src/api/schema.d.ts` leyendo
+`/v3/api-docs` del backend. **El backend tiene que estar corriendo** (`make api-run`): el
+script lee del endpoint HTTP, no de un archivo. El resultado se commitea — así el diff
+muestra los cambios de contrato en la revisión del PR.

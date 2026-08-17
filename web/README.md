@@ -12,3 +12,5 @@ Desde la raíz del repo (`make web-dev`, `make typecheck`, `make lint`) o direct
 - `pnpm typecheck` — `tsc --noEmit` sobre `tsconfig.json` y `tsconfig.test.json`.
 - `pnpm lint` — `biome check .`.
 - `pnpm format` — `biome format --write .`.
+- `pnpm gen:api` — regenera `src/api/schema.d.ts` desde `/v3/api-docs` del backend (tiene que
+  estar corriendo). El archivo es generado, se commitea, y está excluido de Biome.

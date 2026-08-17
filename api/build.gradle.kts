@@ -21,6 +21,10 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.flywaydb:flyway-database-postgresql")
+	// Compatibilidad verificada: springdoc-openapi 3.1.0 fija su propia dependencia en Spring Boot 4.1.0,
+	// versión exacta que usa este proyecto (ver api/build.gradle.kts). Release notes:
+	// https://github.com/springdoc/springdoc-openapi/releases/tag/v3.1.0
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 	runtimeOnly("org.postgresql:postgresql")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
