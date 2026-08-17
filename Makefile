@@ -17,11 +17,11 @@ api-run: ## Corre el backend en el host (Spring Boot, ./gradlew bootRun)
 web-dev: ## Corre el frontend en modo dev (pnpm dev)
 	cd web && pnpm dev
 
-test-api: up ## Corre los tests del backend (Testcontainers necesita Postgres)
-	cd api && ./gradlew test
+test-api: up ## Corre los tests del backend + verificación de cobertura JaCoCo (Testcontainers necesita Postgres)
+	cd api && ./gradlew check
 
-test-web: ## Corre los tests del frontend
-	cd web && pnpm test
+test-web: ## Corre los tests del frontend con cobertura enforced (umbrales 80/80/80/80)
+	cd web && pnpm test:coverage
 
 gen-api: ## Genera los tipos de TypeScript desde el esquema OpenAPI del backend
 	cd web && pnpm gen:api
@@ -39,12 +39,11 @@ lint: ## Corre el linter (Biome) sobre el frontend
 e2e: up ## Corre los tests end-to-end con Playwright
 	cd web && pnpm e2e
 
-validate: up ## Pipeline completo: typecheck + lint + tests + e2e. Gate del pre-push hacia main
+validate: up ## Pipeline completo: typecheck + lint + tests (backend y frontend, con cobertura). Gate del pre-push hacia main. No incluye e2e — ver "make e2e"
 	$(MAKE) typecheck
 	$(MAKE) lint
 	$(MAKE) test-api
 	$(MAKE) test-web
-	$(MAKE) e2e
 
 install-hooks: ## Activa los git hooks versionados en .githooks/
 	git config core.hooksPath .githooks
