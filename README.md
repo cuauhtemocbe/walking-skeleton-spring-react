@@ -78,6 +78,14 @@ falta `docker compose up` antes. Para desarrollo local, reusar el contenedor ent
 baja el arranque a casi cero: creá `~/.testcontainers.properties` (de tu máquina, no del repo)
 con `testcontainers.reuse.enable=true`.
 
+### Cobertura de tests del backend
+
+`./gradlew check` corre los tests y verifica cobertura en el mismo comando: JaCoCo hace fallar
+el build si la cobertura de línea baja de **90%** sobre el código fuente de `api/`. Excluidas:
+`ApiApplication` (solo tiene el `main`) y `config/**`, salvo `ManejadorErrores` — ese sí tiene
+lógica (arma el `ProblemDetail`) y debe estar cubierto. El reporte HTML navegable queda en
+`api/build/reports/jacoco/test/html/index.html`.
+
 ### Generar los tipos del cliente
 
 `make gen-api` (o `pnpm gen:api` desde `web/`) regenera `web/src/api/schema.d.ts` leyendo
