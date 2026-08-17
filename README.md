@@ -67,9 +67,45 @@ Si este repo alguna vez se gradúa a producto, el estándar completo está en
 
 ## Uso
 
-Pendiente: se documenta la secuencia exacta de verificación desde un clon limpio al cerrar
-M5. Hasta entonces, `make help` lista los targets disponibles. Corré `make install-hooks`
-una vez por clon para activar los git hooks versionados en `.githooks/`.
+Desde un clon limpio, en un directorio vacío:
+
+```bash
+git clone https://github.com/cuauhtemocbe/walking-skeleton-spring-react.git
+cd walking-skeleton-spring-react
+
+sdk env install       # activa Java 25, lee .sdkmanrc
+nvm use                # activa Node, lee .nvmrc
+
+make install-hooks     # activa los git hooks versionados en .githooks/ — no se activan solos al clonar
+make up                 # levanta Postgres en Docker y espera a que esté healthy
+
+(make api-run) &
+(cd web && pnpm install && pnpm dev)
+```
+
+Abrí `http://localhost:5173`: la página muestra el estado de `/api/health` y, debajo, el
+formulario y la lista de notas. `make help` lista el resto de los targets disponibles.
+
+### Verificación final (criterios 1 y 2)
+
+Con el stack de arriba corriendo:
+
+1. Escribí un texto en el campo **Nueva nota** y pulsá **Guardar**.
+2. La nota aparece en la lista.
+3. Recargá la página.
+4. La nota sigue apareciendo — se leyó de Postgres, no de estado en memoria.
+
+Esta verificación es **manual a propósito**: el issue #19 (E2E con Playwright que automatiza
+este mismo recorrido) no se implementó. `make e2e` existe como target del `Makefile` pero no
+tiene ningún test detrás todavía — correrlo no hace nada útil.
+
+### Validación
+
+`make validate` es el pipeline único de este repo (no hay CI hosteado, ver la tabla de más
+abajo): typecheck + lint + tests de backend con el gate de cobertura de JaCoCo (#17) + tests
+de frontend con el gate de cobertura de Vitest (#18). Es lo mismo que corre el hook de
+`pre-push` hacia `main`, y corre igual desde la terminal o desde el hook. Deliberadamente no
+incluye el E2E — ver la sección anterior.
 
 ### Tests de integración del backend
 
