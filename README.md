@@ -86,6 +86,15 @@ el build si la cobertura de línea baja de **90%** sobre el código fuente de `a
 lógica (arma el `ProblemDetail`) y debe estar cubierto. El reporte HTML navegable queda en
 `api/build/reports/jacoco/test/html/index.html`.
 
+### Cobertura de tests del frontend
+
+`pnpm test:coverage` (o `make test-web`) corre la suite de Vitest y hace fallar el comando si
+la cobertura baja de **80%** en cualquiera de las cuatro métricas (statements, branches,
+functions, lines). Excluidos: `src/api/schema.d.ts` (generado), `src/main.tsx` (bootstrap) y
+los archivos `*.config.*`. Los tests conviven con el código que cubren:
+`Componente.tsx` + `Componente.test.tsx` en el mismo directorio. El reporte HTML navegable
+queda en `web/coverage/index.html`.
+
 ### Generar los tipos del cliente
 
 `make gen-api` (o `pnpm gen:api` desde `web/`) regenera `web/src/api/schema.d.ts` leyendo

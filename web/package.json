@@ -9,6 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "lint": "biome check .",
     "format": "biome format --write .",
     "gen:api": "openapi-typescript http://localhost:8080/v3/api-docs -o src/api/schema.d.ts"
@@ -19,12 +21,17 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.8",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.2",
     "@types/node": "24.13.3",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.5",
+    "@vitest/coverage-v8": "4.1.10",
+    "jsdom": "30.0.1",
     "openapi-typescript": "7.13.0",
     "typescript": "6.0.3",
-    "vite": "8.2.1"
+    "vite": "8.2.1",
+    "vitest": "4.1.10"
   }
 }
