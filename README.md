@@ -71,6 +71,13 @@ Pendiente: se documenta la secuencia exacta de verificación desde un clon limpi
 M5. Hasta entonces, `make help` lista los targets disponibles. Corré `make install-hooks`
 una vez por clon para activar los git hooks versionados en `.githooks/`.
 
+### Tests de integración del backend
+
+`./gradlew test` levanta su propio Postgres real vía Testcontainers para `NotaIT` — no hace
+falta `docker compose up` antes. Para desarrollo local, reusar el contenedor entre corridas
+baja el arranque a casi cero: creá `~/.testcontainers.properties` (de tu máquina, no del repo)
+con `testcontainers.reuse.enable=true`.
+
 ### Generar los tipos del cliente
 
 `make gen-api` (o `pnpm gen:api` desde `web/`) regenera `web/src/api/schema.d.ts` leyendo
