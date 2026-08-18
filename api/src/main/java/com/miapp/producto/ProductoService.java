@@ -53,6 +53,12 @@ public class ProductoService {
         productoRepository.deleteById(id);
     }
 
+    public ProductoResponse obtenerPorId(Long id) {
+        return productoRepository.findById(id)
+            .map(ProductoService::aRespuesta)
+            .orElseThrow(() -> new ProductoNoEncontradoException(id));
+    }
+
     private void validarCodigoDisponible(String codigo, Long idAExcluir) {
         productoRepository.findByCodigo(codigo)
             .filter(existente -> !Objects.equals(existente.getId(), idAExcluir))

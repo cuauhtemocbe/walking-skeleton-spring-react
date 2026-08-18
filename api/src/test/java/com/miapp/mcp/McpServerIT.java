@@ -1,5 +1,7 @@
 package com.miapp.mcp;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -57,13 +59,14 @@ class McpServerIT {
     }
 
     @Test
-    void listaExactamenteLasDiezToolsDeClienteYProducto() {
+    void listaExactamenteLasCatorceToolsDeClienteProductoYPedido() {
         ListToolsResult tools = cliente.listTools();
 
-        assertThat(tools.tools()).hasSize(10);
+        assertThat(tools.tools()).hasSize(14);
         assertThat(tools.tools()).extracting(Tool::name).containsExactlyInAnyOrder(
             "crearCliente", "listarClientes", "buscarCliente", "actualizarCliente", "eliminarCliente",
-            "crearProducto", "listarProductos", "buscarProducto", "actualizarProducto", "eliminarProducto");
+            "crearProducto", "listarProductos", "buscarProducto", "actualizarProducto", "eliminarProducto",
+            "crearPedido", "listarPedidos", "obtenerPedido", "eliminarPedido");
     }
 
     @Test
@@ -228,6 +231,119 @@ class McpServerIT {
         assertThat(resultado.isError()).isTrue();
         assertThat(resultado.content()).extracting(contenido -> ((TextContent) contenido).text())
             .anyMatch(texto -> texto.contains("No existe un producto con id"));
+    }
+
+    @Test
+    void flujoFelizCompletoCrearListarObtenerYEliminarPedido() throws Exception {
+        CallToolResult clienteCreado = cliente.callTool(new CallToolRequest("crearCliente", Map.of(
+            "nombre", "Ferretería del Pedido",
+            "rfc", "FFF060606FFF",
+            "razonSocial", "Del Pedido S.A. de C.V.")));
+        long idCliente = textoComoJson(clienteCreado).path("id").asLong();
+
+        CallToolResult martilloCreado = cliente.callTool(new CallToolRequest("crearProducto", Map.of(
+            "codigo", "TRP-PED-1",
+            "nombre", "Martillo del Pedido",
+            "precioUnitario", 100.00)));
+        long idMartillo = textoComoJson(martilloCreado).path("id").asLong();
+
+        CallToolResult serruchoCreado = cliente.callTool(new CallToolRequest("crearProducto", Map.of(
+            "codigo", "TRP-PED-2",
+            "nombre", "Serrucho del Pedido",
+            "precioUnitario", 50.00)));
+        long idSerrucho = textoComoJson(serruchoCreado).path("id").asLong();
+
+        CallToolResult pedidoCreado = cliente.callTool(new CallToolRequest("crearPedido", Map.of(
+            "clienteId", idCliente,
+            "lineas", List.of(
+                Map.of("productoId", idMartillo, "cantidad", 3),
+                Map.of("productoId", idSerrucho, "cantidad", 4)))));
+        assertThat(pedidoCreado.isError()).isNotEqualTo(Boolean.TRUE);
+        JsonNode pedidoJson = textoComoJson(pedidoCreado);
+        long idPedido = pedidoJson.path("id").asLong();
+        assertThat(pedidoJson.path("clienteId").asLong()).isEqualTo(idCliente);
+        assertThat(pedidoJson.path("lineas")).hasSize(2);
+        assertThat(new BigDecimal(pedidoJson.path("total").asText()))
+            .isEqualByComparingTo(new BigDecimal("500.00"));
+
+        CallToolResult listado = cliente.callTool(new CallToolRequest("listarPedidos", Map.of()));
+        JsonNode listaPedidos = textoComoJson(listado);
+        assertThat(listaPedidos).anyMatch(nodo -> nodo.path("id").asLong() == idPedido);
+
+        CallToolResult obtenido = cliente.callTool(new CallToolRequest("obtenerPedido", Map.of("id", idPedido)));
+        assertThat(textoComoJson(obtenido).path("id").asLong()).isEqualTo(idPedido);
+
+        CallToolResult eliminado = cliente.callTool(new CallToolRequest("eliminarPedido", Map.of("id", idPedido)));
+        assertThat(eliminado.isError()).isNotEqualTo(Boolean.TRUE);
+
+        CallToolResult obtenidoTrasEliminar = cliente.callTool(new CallToolRequest("obtenerPedido", Map.of("id", idPedido)));
+        assertThat(obtenidoTrasEliminar.content()).extracting(contenido -> ((TextContent) contenido).text())
+            .allMatch(texto -> texto.equals("null") || texto.isBlank());
+    }
+
+    @Test
+    void crearPedidoConClienteInexistenteDevuelveErrorLegible() throws Exception {
+        CallToolResult productoCreado = cliente.callTool(new CallToolRequest("crearProducto", Map.of(
+            "codigo", "TRP-PED-3",
+            "nombre", "Producto para pedido inválido",
+            "precioUnitario", 10.00)));
+        long idProducto = textoComoJson(productoCreado).path("id").asLong();
+
+        CallToolResult resultado = cliente.callTool(new CallToolRequest("crearPedido", Map.of(
+            "clienteId", 999999L,
+            "lineas", List.of(Map.of("productoId", idProducto, "cantidad", 1)))));
+
+        assertThat(resultado.isError()).isTrue();
+        assertThat(resultado.content()).extracting(contenido -> ((TextContent) contenido).text())
+            .anyMatch(texto -> texto.contains("No existe un cliente con id"));
+    }
+
+    @Test
+    void crearPedidoConProductoInexistenteDevuelveErrorLegible() throws Exception {
+        CallToolResult clienteCreado = cliente.callTool(new CallToolRequest("crearCliente", Map.of(
+            "nombre", "Cliente para pedido inválido",
+            "rfc", "GGG070707GGG",
+            "razonSocial", "Inválido S.A.")));
+        long idCliente = textoComoJson(clienteCreado).path("id").asLong();
+
+        CallToolResult resultado = cliente.callTool(new CallToolRequest("crearPedido", Map.of(
+            "clienteId", idCliente,
+            "lineas", List.of(Map.of("productoId", 999999L, "cantidad", 1)))));
+
+        assertThat(resultado.isError()).isTrue();
+        assertThat(resultado.content()).extracting(contenido -> ((TextContent) contenido).text())
+            .anyMatch(texto -> texto.contains("No existe un producto con id"));
+    }
+
+    @Test
+    void crearPedidoConCantidadInvalidaDevuelveErrorLegible() throws Exception {
+        CallToolResult clienteCreado = cliente.callTool(new CallToolRequest("crearCliente", Map.of(
+            "nombre", "Cliente para cantidad inválida",
+            "rfc", "HHH080808HHH",
+            "razonSocial", "Cantidad Inválida S.A.")));
+        long idCliente = textoComoJson(clienteCreado).path("id").asLong();
+        CallToolResult productoCreado = cliente.callTool(new CallToolRequest("crearProducto", Map.of(
+            "codigo", "TRP-PED-4",
+            "nombre", "Producto para cantidad inválida",
+            "precioUnitario", 10.00)));
+        long idProducto = textoComoJson(productoCreado).path("id").asLong();
+
+        CallToolResult resultado = cliente.callTool(new CallToolRequest("crearPedido", Map.of(
+            "clienteId", idCliente,
+            "lineas", List.of(Map.of("productoId", idProducto, "cantidad", 0)))));
+
+        assertThat(resultado.isError()).isTrue();
+        assertThat(resultado.content()).extracting(contenido -> ((TextContent) contenido).text())
+            .anyMatch(texto -> texto.contains("La cantidad debe ser mayor a cero"));
+    }
+
+    @Test
+    void eliminarPedidoInexistenteDevuelveErrorLegible() {
+        CallToolResult resultado = cliente.callTool(new CallToolRequest("eliminarPedido", Map.of("id", 999999L)));
+
+        assertThat(resultado.isError()).isTrue();
+        assertThat(resultado.content()).extracting(contenido -> ((TextContent) contenido).text())
+            .anyMatch(texto -> texto.contains("No existe un pedido con id"));
     }
 
     private JsonNode textoComoJson(CallToolResult resultado) throws Exception {
