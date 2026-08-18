@@ -137,3 +137,6 @@ queda en `web/coverage/index.html`.
 `/v3/api-docs` del backend. **El backend tiene que estar corriendo** (`make api-run`): el
 script lee del endpoint HTTP, no de un archivo. El resultado se commitea — así el diff
 muestra los cambios de contrato en la revisión del PR.
+
+Con el backend corriendo, `http://localhost:8080/swagger-ui/index.html` sirve la UI
+interactiva de Swagger para explorar y probar los endpoints.
