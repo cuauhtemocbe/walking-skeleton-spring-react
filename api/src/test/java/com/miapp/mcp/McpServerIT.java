@@ -1,4 +1,4 @@
-package com.miapp.cliente;
+package com.miapp.mcp;
 
 import java.util.Map;
 
@@ -57,16 +57,17 @@ class McpServerIT {
     }
 
     @Test
-    void listaExactamenteLasCincoToolsDeCliente() {
+    void listaExactamenteLasDiezToolsDeClienteYProducto() {
         ListToolsResult tools = cliente.listTools();
 
-        assertThat(tools.tools()).hasSize(5);
+        assertThat(tools.tools()).hasSize(10);
         assertThat(tools.tools()).extracting(Tool::name).containsExactlyInAnyOrder(
-            "crearCliente", "listarClientes", "buscarCliente", "actualizarCliente", "eliminarCliente");
+            "crearCliente", "listarClientes", "buscarCliente", "actualizarCliente", "eliminarCliente",
+            "crearProducto", "listarProductos", "buscarProducto", "actualizarProducto", "eliminarProducto");
     }
 
     @Test
-    void flujoFelizCompletoCrearListarBuscarActualizarEliminar() throws Exception {
+    void flujoFelizCompletoCrearListarBuscarActualizarEliminarCliente() throws Exception {
         CallToolResult creado = cliente.callTool(new CallToolRequest("crearCliente", Map.of(
             "nombre", "Ferretería Truper",
             "rfc", "AAA010101AAA",
@@ -153,6 +154,80 @@ class McpServerIT {
         assertThat(resultado.isError()).isTrue();
         assertThat(resultado.content()).extracting(contenido -> ((TextContent) contenido).text())
             .anyMatch(texto -> texto.contains("No existe un cliente con id"));
+    }
+
+    @Test
+    void flujoFelizCompletoCrearListarBuscarActualizarEliminarProducto() throws Exception {
+        CallToolResult creado = cliente.callTool(new CallToolRequest("crearProducto", Map.of(
+            "codigo", "TRP-100",
+            "nombre", "Martillo Truper",
+            "precioUnitario", 199.90)));
+        assertThat(creado.isError()).isNotEqualTo(Boolean.TRUE);
+        JsonNode productoCreado = textoComoJson(creado);
+        long id = productoCreado.path("id").asLong();
+        assertThat(productoCreado.path("nombre").asText()).isEqualTo("Martillo Truper");
+
+        CallToolResult listado = cliente.callTool(new CallToolRequest("listarProductos", Map.of()));
+        JsonNode listaProductos = textoComoJson(listado);
+        assertThat(listaProductos).anyMatch(nodo -> nodo.path("codigo").asText().equals("TRP-100"));
+
+        CallToolResult buscado = cliente.callTool(new CallToolRequest("buscarProducto", Map.of("codigo", "TRP-100")));
+        JsonNode productoBuscado = textoComoJson(buscado);
+        assertThat(productoBuscado.path("id").asLong()).isEqualTo(id);
+
+        CallToolResult actualizado = cliente.callTool(new CallToolRequest("actualizarProducto", Map.of(
+            "id", id,
+            "codigo", "TRP-100",
+            "nombre", "Martillo Truper XL",
+            "precioUnitario", 249.90)));
+        assertThat(actualizado.isError()).isNotEqualTo(Boolean.TRUE);
+        assertThat(textoComoJson(actualizado).path("nombre").asText()).isEqualTo("Martillo Truper XL");
+
+        CallToolResult eliminado = cliente.callTool(new CallToolRequest("eliminarProducto", Map.of("id", id)));
+        assertThat(eliminado.isError()).isNotEqualTo(Boolean.TRUE);
+
+        CallToolResult buscadoTrasEliminar = cliente.callTool(new CallToolRequest("buscarProducto", Map.of("codigo", "TRP-100")));
+        assertThat(buscadoTrasEliminar.content()).extracting(contenido -> ((TextContent) contenido).text())
+            .allMatch(texto -> texto.equals("null") || texto.isBlank());
+    }
+
+    @Test
+    void crearProductoConCodigoDuplicadoDevuelveErrorLegible() {
+        cliente.callTool(new CallToolRequest("crearProducto", Map.of(
+            "codigo", "TRP-200",
+            "nombre", "Desarmador Truper",
+            "precioUnitario", 89.90)));
+
+        CallToolResult resultado = cliente.callTool(new CallToolRequest("crearProducto", Map.of(
+            "codigo", "TRP-200",
+            "nombre", "Otro producto",
+            "precioUnitario", 10.00)));
+
+        assertThat(resultado.isError()).isTrue();
+        assertThat(resultado.content()).extracting(contenido -> ((TextContent) contenido).text())
+            .anyMatch(texto -> texto.contains("Ya existe un producto con código"));
+    }
+
+    @Test
+    void actualizarProductoInexistenteDevuelveErrorLegible() {
+        CallToolResult resultado = cliente.callTool(new CallToolRequest("actualizarProducto", Map.of(
+            "id", 999999L,
+            "codigo", "TRP-300",
+            "nombre", "Producto",
+            "precioUnitario", 10.00)));
+
+        assertThat(resultado.isError()).isTrue();
+        assertThat(resultado.content()).extracting(contenido -> ((TextContent) contenido).text())
+            .anyMatch(texto -> texto.contains("No existe un producto con id"));
+    }
+
+    @Test
+    void eliminarProductoInexistenteDevuelveErrorLegible() {
+        CallToolResult resultado = cliente.callTool(new CallToolRequest("eliminarProducto", Map.of("id", 999999L)));
+
+        assertThat(resultado.isError()).isTrue();
+        assertThat(resultado.content()).extracting(contenido -> ((TextContent) contenido).text())
+            .anyMatch(texto -> texto.contains("No existe un producto con id"));
     }
 
     private JsonNode textoComoJson(CallToolResult resultado) throws Exception {
