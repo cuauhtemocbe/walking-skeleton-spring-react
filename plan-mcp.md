@@ -131,7 +131,10 @@ Primer slice vertical: agrega toda la infraestructura MCP y la recorre con una s
 
 **Cierra cuando**: un cliente MCP contra `http://localhost:8080/mcp` lista exactamente 5 tools y
 ejecuta crear/listar/buscar/actualizar/eliminar Cliente contra Postgres real; `./gradlew check`
-verde (JaCoCo ≥90%); `grep -ri nota api/src web/src README.md` no devuelve nada.
+verde (JaCoCo ≥90%); `grep -ril nota api/src/main/java api/src/test/java` no devuelve nada salvo
+falsos positivos de "annotation" y `V1__crear_nota.sql` (nunca se edita). `web/src`/`README.md`
+quedan fuera de este chequeo — su limpieza es de M10/M11 (ver la Definición de terminado, que sí
+exige el grep amplio una vez cerrado todo el dominio).
 
 ### M7 — Slice Producto
 
