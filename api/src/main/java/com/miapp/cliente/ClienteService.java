@@ -53,6 +53,10 @@ public class ClienteService {
         clienteRepository.deleteById(id);
     }
 
+    public boolean existePorId(Long id) {
+        return clienteRepository.existsById(id);
+    }
+
     private void validarRfcDisponible(String rfc, Long idAExcluir) {
         clienteRepository.findByRfc(rfc)
             .filter(existente -> !Objects.equals(existente.getId(), idAExcluir))
