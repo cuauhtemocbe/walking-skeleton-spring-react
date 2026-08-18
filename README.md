@@ -21,9 +21,25 @@ Si cualquiera de los cinco falla, el skeleton no camina.
 
 En construcción. El backlog vive en
 [GitHub Issues](https://github.com/cuauhtemocbe/walking-skeleton-spring-react/issues),
-organizado en milestones **M0 → M5**. No se avanza de hito sin que el anterior pase su
+organizado en milestones **M0 → M12**. No se avanza de hito sin que el anterior pase su
 criterio de aceptación: ese es el punto entero del skeleton — cuando algo falla, que haya
 una sola cosa nueva que pueda ser la causa.
+
+M0–M5 cerraron el walking skeleton original (`Nota` end-to-end, ver arriba). A partir de M6
+el repo evoluciona hacia la gestión de pedidos Truper de un examen técnico: la entidad
+`Nota` se retiró y el dominio (Cliente/Producto/Pedido) se expone **solo como herramientas
+MCP, no como REST** — ver la sección [Gestión de pedidos Truper (MCP Server)](#gestión-de-pedidos-truper-mcp-server)
+más abajo y `plan-mcp.md` para el plan completo M6–M12.
+
+| Milestone | Qué hace | Estado |
+|---|---|---|
+| M6 — Slice Cliente | Retira `Nota`, agrega infraestructura MCP + 5 tools de Cliente | Cerrado (#28) |
+| M7 — Slice Producto | 5 tools de Producto | Cerrado (#29) |
+| M8 — Slice Pedido + PedidoDetalle | 4 tools de Pedido (total calculado al vuelo) | Cerrado (#30) |
+| M9 — Verificación con Claude Code | Demo de aceptación de la Parte 1 contra Claude Code real | En curso (#31) |
+| M10 — Backend `agent/` (FastAPI + OpenAI) | Parte 2: agente de chat propio, mismo MCP Server | Pendiente |
+| M11 — Frontend de chat en React | Reemplaza la UI de `Nota` por un chat | Pendiente |
+| M12 — Gates end-to-end | `make validate` cubre `api`+`web`+`agent` | Pendiente |
 
 ## Alcance
 
@@ -99,6 +115,132 @@ Esta verificación es **manual a propósito**: el issue #19 (E2E con Playwright 
 este mismo recorrido) no se implementó. `make e2e` existe como target del `Makefile` pero no
 tiene ningún test detrás todavía — correrlo no hace nada útil.
 
+## Gestión de pedidos Truper (MCP Server)
+
+A partir de M6 el repo suma un segundo dominio, en paralelo al walking skeleton original: un
+**servidor MCP** (Spring AI, sobre el mismo `api/`) que expone Cliente, Producto y Pedido como
+14 herramientas MCP vía transporte Streamable HTTP, pensado para ser consumido por un agente
+conversacional (Claude Code, u otro cliente MCP) en vez de por REST.
+
+**Decisión deliberada**: este dominio usa Postgres real (Flyway + Testcontainers, la misma
+filosofía del resto del repo) en vez de una base en memoria — por lo tanto no hay `/h2-console`
+para inspeccionar el estado. La sección [Verificación alternativa](#verificación-alternativa-sin-h2-console)
+más abajo documenta el reemplazo: las propias tools de listado y `psql` directo contra el
+contenedor.
+
+### Cómo levantar el servidor MCP
+
+Con Java 25 y Docker activos (ver [Requisitos](#requisitos)):
+
+```bash
+make up          # levanta Postgres y espera a que esté healthy
+make api-run      # corre el backend — expone el servidor MCP en http://localhost:8080/mcp
+```
+
+Registrá Claude Code como cliente MCP (una sola vez; queda guardado entre sesiones):
+
+```bash
+claude mcp add --transport http truper-pedidos http://localhost:8080/mcp
+claude mcp list   # confirma "truper-pedidos: http://localhost:8080/mcp (HTTP) - ✔ Connected"
+```
+
+Con eso, cualquier sesión de Claude Code en este entorno puede invocar las 14 tools
+directamente en la conversación.
+
+### Tools MCP generadas
+
+Las 14 tools están definidas con `@McpTool`/`@McpToolParam` sobre `@Component`s planos en
+`cliente/mcp/ClienteMcpTools.java`, `producto/mcp/ProductoMcpTools.java` y
+`pedido/mcp/PedidoMcpTools.java`. Las excepciones de dominio (cliente/producto/pedido no
+encontrado, RFC o código duplicado, cantidad inválida) se atrapan en la tool y se relanzan como
+`McpError` con mensaje legible — Spring AI envuelve cualquier excepción no atrapada en un
+mensaje genérico inútil para el agente ([mcp-annotations#52](https://github.com/spring-ai-community/mcp-annotations/issues/52)).
+
+**Cliente** (5 tools)
+
+| Tool | Descripción |
+|---|---|
+| `crearCliente` | Da de alta un cliente nuevo con su RFC y razón social |
+| `listarClientes` | Lista todos los clientes registrados |
+| `buscarCliente` | Busca un cliente por su RFC; devuelve `null` si no existe |
+| `actualizarCliente` | Actualiza los datos de un cliente existente |
+| `eliminarCliente` | Elimina un cliente por su id |
+
+**Producto** (5 tools)
+
+| Tool | Descripción |
+|---|---|
+| `crearProducto` | Da de alta un producto nuevo con su código único y precio |
+| `listarProductos` | Lista todos los productos registrados |
+| `buscarProducto` | Busca un producto por su código; devuelve `null` si no existe |
+| `actualizarProducto` | Actualiza los datos de un producto existente |
+| `eliminarProducto` | Elimina un producto por su id |
+
+**Pedido** (4 tools — sin `actualizar`, igual que el diagrama de referencia del examen)
+
+| Tool | Descripción |
+|---|---|
+| `crearPedido` | Crea un pedido para un cliente existente con una o más líneas de producto y devuelve el total calculado |
+| `listarPedidos` | Lista todos los pedidos registrados, incluyendo su total calculado |
+| `obtenerPedido` | Obtiene un pedido por su id, incluyendo su total calculado; devuelve `null` si no existe |
+| `eliminarPedido` | Elimina un pedido por su id |
+
+`Pedido.total` **no es una columna persistida**: la tabla `pedido` solo tiene `id`,
+`cliente_id`, `fecha`. El total se calcula al vuelo en `PedidoService`
+(`Σ cantidad × precioUnitario` sobre `pedido_detalle`) y solo aparece en la respuesta de las
+tools, nunca en la entidad JPA ni en la migración Flyway.
+
+### Escenario de prueba
+
+Con el servidor arriba y `truper-pedidos` registrado, cargá un catálogo mínimo (una vez) y
+corré el prompt de la demo del examen:
+
+```
+Da de alta el producto MART-001 "Martillo" a $150.00 y SERR-001 "Serrucho" a $220.00.
+```
+
+```
+Crea un pedido: agrégame tres martillos y cuatro serruchos.
+```
+
+Comportamiento esperado (verificado end-to-end contra Postgres real):
+
+1. Si el cliente todavía no existe, Claude Code entrevista antes de continuar — pide RFC y
+   razón social y da de alta con `crearCliente` — antes de armar el pedido.
+2. Arma las líneas correctas (3× Martillo, 4× Serrucho) y llama a `crearPedido`.
+3. El total devuelto coincide con `3×150.00 + 4×220.00 = 1330.00`:
+
+```json
+{
+  "id": 2,
+  "clienteId": 1,
+  "fecha": "2026-08-18",
+  "lineas": [
+    { "productoId": 1, "cantidad": 3, "precioUnitario": 150.00, "subtotal": 450.00 },
+    { "productoId": 2, "cantidad": 4, "precioUnitario": 220.00, "subtotal": 880.00 }
+  ],
+  "total": 1330.00
+}
+```
+
+### Verificación alternativa (sin `/h2-console`)
+
+Como no hay base en memoria, el estado se inspecciona con dos mecanismos:
+
+**1. Las propias tools de listado**, desde la conversación con Claude Code: `listarClientes`,
+`listarProductos`, `listarPedidos`.
+
+**2. `psql` directo contra el contenedor de Postgres** (con `make up` corriendo):
+
+```bash
+docker compose exec postgres psql -U notas -d notas -c "select * from pedido;"
+docker compose exec postgres psql -U notas -d notas -c "select * from pedido_detalle;"
+```
+
+Nótese que `pedido` no tiene columna `total` (se calcula al vuelo, ver arriba) — el total se
+verifica cruzando `pedido_detalle` contra `producto.precio_unitario`, o simplemente confiando
+en la respuesta ya verificada de `crearPedido`/`obtenerPedido`/`listarPedidos`.
+
 ### Validación
 
 `make validate` es el pipeline único de este repo (no hay CI hosteado, ver la tabla de más
@@ -109,8 +251,9 @@ incluye el E2E — ver la sección anterior.
 
 ### Tests de integración del backend
 
-`./gradlew test` levanta su propio Postgres real vía Testcontainers para `NotaIT` — no hace
-falta `docker compose up` antes. Para desarrollo local, reusar el contenedor entre corridas
+`./gradlew test` levanta su propio Postgres real vía Testcontainers para los tests de
+integración (`McpServerIT`, cliente MCP real contra las 14 tools) — no hace falta
+`docker compose up` antes. Para desarrollo local, reusar el contenedor entre corridas
 baja el arranque a casi cero: creá `~/.testcontainers.properties` (de tu máquina, no del repo)
 con `testcontainers.reuse.enable=true`.
 
