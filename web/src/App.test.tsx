@@ -115,6 +115,21 @@ describe("lista de notas", () => {
     await waitFor(() => expect(screen.getByText("hola")).toBeInTheDocument());
   });
 
+  it("muestra varias notas existentes en el mismo orden", async () => {
+    const notas = [
+      { id: "1", texto: "primera", creadaEn: "2026-01-01T00:00:00Z" },
+      { id: "2", texto: "segunda", creadaEn: "2026-01-02T00:00:00Z" },
+      { id: "3", texto: "tercera", creadaEn: "2026-01-03T00:00:00Z" },
+    ];
+    stubFetch({ notas: { ok: true, json: () => Promise.resolve(notas) } });
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText("tercera")).toBeInTheDocument());
+    const items = screen.getAllByRole("listitem");
+    expect(items.map((item) => item.textContent)).toEqual(["primera", "segunda", "tercera"]);
+  });
+
   it("muestra un error legible cuando no se pueden cargar las notas", async () => {
     stubFetch({ notas: { ok: false, status: 500 } });
 

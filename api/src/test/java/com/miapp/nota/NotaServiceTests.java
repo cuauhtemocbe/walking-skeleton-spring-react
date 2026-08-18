@@ -52,4 +52,18 @@ class NotaServiceTests {
         assertThat(respuesta.get(0).texto()).isEqualTo("hola");
     }
 
+    @Test
+    void alListarMapeaVariasEntidadesGuardadasEnElMismoOrden() {
+        notaService = new NotaService(notaRepository);
+        Nota primera = new Nota(UUID.randomUUID(), "primera", Instant.now());
+        Nota segunda = new Nota(UUID.randomUUID(), "segunda", Instant.now());
+        Nota tercera = new Nota(UUID.randomUUID(), "tercera", Instant.now());
+        given(notaRepository.findAll()).willReturn(List.of(primera, segunda, tercera));
+
+        List<NotaResponse> respuesta = notaService.listar();
+
+        assertThat(respuesta).extracting(NotaResponse::texto)
+            .containsExactly("primera", "segunda", "tercera");
+    }
+
 }

@@ -53,6 +53,21 @@ class NotaIT {
     }
 
     @Test
+    void variasNotasCreadasApareceTodasAlListar() {
+        restTemplate.postForEntity("/api/notas", new CrearNota("nota A"), NotaResponse.class);
+        restTemplate.postForEntity("/api/notas", new CrearNota("nota B"), NotaResponse.class);
+        restTemplate.postForEntity("/api/notas", new CrearNota("nota C"), NotaResponse.class);
+
+        List<NotaResponse> notas = restTemplate.exchange(
+                "/api/notas", HttpMethod.GET, null,
+                new ParameterizedTypeReference<List<NotaResponse>>() { })
+            .getBody();
+
+        assertThat(notas).extracting(NotaResponse::texto)
+            .contains("nota A", "nota B", "nota C");
+    }
+
+    @Test
     void laCreacionDevuelve201ConLaCabeceraLocation() {
         ResponseEntity<NotaResponse> respuesta = restTemplate.postForEntity(
             "/api/notas", new CrearNota("otra nota"), NotaResponse.class);

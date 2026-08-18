@@ -12,6 +12,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -64,6 +65,19 @@ class NotaControllerTests {
         mockMvc.perform(get("/api/notas"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].texto").value("hola"));
+    }
+
+    @Test
+    void listaVariasNotasCreadasEnElMismoOrden() throws Exception {
+        NotaResponse primera = new NotaResponse(UUID.randomUUID(), "primera", Instant.now());
+        NotaResponse segunda = new NotaResponse(UUID.randomUUID(), "segunda", Instant.now());
+        given(notaService.listar()).willReturn(List.of(primera, segunda));
+
+        mockMvc.perform(get("/api/notas"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)))
+            .andExpect(jsonPath("$[0].texto").value("primera"))
+            .andExpect(jsonPath("$[1].texto").value("segunda"));
     }
 
     @Test
