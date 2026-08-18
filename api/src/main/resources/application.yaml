@@ -10,3 +10,12 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+  ai:
+    mcp:
+      server:
+        name: truper-pedidos
+        version: 0.1.0
+        type: SYNC
+        protocol: STREAMABLE
+        instructions: >
+          Servidor MCP de gestión de pedidos de Truper: expone Cliente, Producto y Pedido.
